@@ -1,1 +1,1066 @@
-
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "ac1da173",
+   "metadata": {},
+   "source": [
+    "# Importation des modules utilisés et création des connexions"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "id": "cec3f60c",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import sqlite3\n",
+    "import pandas\n",
+    "import pymongo\n",
+    "import mongojoin"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "64dee9a1",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Connection SQL\n",
+    "conn = sqlite3.connect(\"ClassicModel.sqlite\")\n",
+    "\n",
+    "# Connection MongDB\n",
+    "client = pymongo.MongoClient(\"mongodb://localhost:27017/\")\n",
+    "db = client.SAE_NoSQL"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 70,
+   "id": "cab21cb3",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "                      customerName\n",
+      "0               Havel & Zbyszek Co\n",
+      "1           American Souvenirs Inc\n",
+      "2                Porto Imports Co.\n",
+      "3       Asian Shopping Network, Co\n",
+      "4                  Natürlich Autos\n",
+      "5                    ANG Resellers\n",
+      "6         Messner Shopping Network\n",
+      "7                Franken Gifts, Co\n",
+      "8                BG&E Collectables\n",
+      "9                 Schuyler Imports\n",
+      "10                Der Hund Imports\n",
+      "11       Cramer Spezialitäten, Ltd\n",
+      "12           Asian Treasures, Inc.\n",
+      "13            SAR Distributors, Co\n",
+      "14                 Kommission Auto\n",
+      "15          Lisboa Souveniers, Inc\n",
+      "16           Precious Collectables\n",
+      "17  Stuttgart Collectable Exchange\n",
+      "18        Feuer Online Stores, Inc\n",
+      "19                Warburg Exchange\n",
+      "20             Anton Designs, Ltd.\n",
+      "21             Mit Vergnügen & Co.\n",
+      "22       Kremlin Collectables, Co.\n",
+      "23              Raanan Stores, Inc\n"
+     ]
+    }
+   ],
+   "source": [
+    "Q1= pandas.read_sql_query(\"\"\"SELECT t1.customerName\n",
+    "            from Customers as t1\n",
+    "            left join Orders as t2 on t1.customerNumber=t2.customerNumber\n",
+    "            where t2.orderNumber is NULL\"\"\",conn)\n",
+    "print(Q1)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 71,
+   "id": "2dcce7a1",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "     lastName firstName  Nombre_client  Nombre_commande  montant_total\n",
+      "0      Murphy     Diane              0                0            NaN\n",
+      "1   Patterson      Mary              0                0            NaN\n",
+      "2    Firrelli      Jeff              0                0            NaN\n",
+      "3   Patterson   William              0                0            NaN\n",
+      "4      Bondur    Gerard              0                0            NaN\n",
+      "5         Bow   Anthony              0                0            NaN\n",
+      "6    Jennings    Leslie              6               34     1210228.57\n",
+      "7    Thompson    Leslie              6               14      378064.72\n",
+      "8    Firrelli     Julie              6               14      422257.44\n",
+      "9   Patterson     Steve              6               18      565516.73\n",
+      "10      Tseng  Foon Yue              7               17      550395.19\n",
+      "11     Vanauf    George              8               22      725598.76\n",
+      "12     Bondur      Loui              6               20      621798.01\n",
+      "13  Hernandez    Gerard              7               43     1401412.66\n",
+      "14   Castillo    Pamela             10               31      959738.52\n",
+      "15       Bott     Larry              8               22      808462.37\n",
+      "16      Jones     Barry              9               25      795706.43\n",
+      "17     Fixter      Andy              5               19      630623.10\n",
+      "18      Marsh     Peter              5               19      651082.73\n",
+      "19       King       Tom              0                0            NaN\n",
+      "20      Nishi      Mami              5               16      503957.58\n",
+      "21       Kato   Yoshimi              0                0            NaN\n",
+      "22     Gerard    Martin              6               12      421106.37\n"
+     ]
+    }
+   ],
+   "source": [
+    "Q2= pandas.read_sql_query(\"\"\"SELECT t1.lastName, t1.firstName,\n",
+    "    Count(distinct t2.customerNumber) as Nombre_client,\n",
+    "    count(distinct t3.orderNumber) as Nombre_commande,\n",
+    "    sum(quantityOrdered*priceEach) as montant_total\n",
+    "            from Employees as t1\n",
+    "            left join Customers as t2 on t1.employeeNumber=t2.salesRepEmployeeNumber\n",
+    "            left join Orders as t3 on t2.customerNumber=t3.customerNumber\n",
+    "            left join OrderDetails as t4 on t3.orderNumber=t4.orderNumber\n",
+    "            group by t1.employeeNumber\"\"\",conn)\n",
+    "print(Q2)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 72,
+   "id": "b66ff370",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "            city    country  Nombre_client  Nombre_commande  montant_total  \\\n",
+      "0  San Francisco        USA             12               48     1588293.29   \n",
+      "1         Boston        USA             12               32      987774.17   \n",
+      "2            NYC        USA             15               39     1275993.95   \n",
+      "3          Paris     France             29              106     3404055.56   \n",
+      "4          Tokyo      Japan              5               16      503957.58   \n",
+      "5         Sydney  Australia             10               38     1281705.83   \n",
+      "6         London         UK             17               47     1604168.80   \n",
+      "\n",
+      "   Nombre_client_etranger  \n",
+      "0                       0  \n",
+      "1                       0  \n",
+      "2                       3  \n",
+      "3                      17  \n",
+      "4                       3  \n",
+      "5                       5  \n",
+      "6                      12  \n"
+     ]
+    }
+   ],
+   "source": [
+    "Q3= pandas.read_sql_query(\"\"\"SELECT t0.city, t0.country,\n",
+    "    Count(distinct t2.customerNumber) as Nombre_client,\n",
+    "    count(distinct t3.orderNumber) as Nombre_commande,\n",
+    "    sum(quantityOrdered*priceEach) as montant_total,\n",
+    "    count(distinct Case when t0.country !=t2.country then t2.customerNumber end) as Nombre_client_etranger\n",
+    "            from Offices t0\n",
+    "            left join Employees as t1 on t0.officeCode=t1.officeCode\n",
+    "            left join Customers as t2 on t1.employeeNumber=t2.salesRepEmployeeNumber\n",
+    "            left join Orders as t3 on t2.customerNumber=t3.customerNumber\n",
+    "            left join OrderDetails as t4 on t3.orderNumber=t4.orderNumber\n",
+    "            group by t1.officeCode\"\"\",conn)\n",
+    "print(Q3)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 74,
+   "id": "a4319a9e",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "    productCode                            productName  Nombre_client  \\\n",
+      "0      S10_1678  1969 Harley Davidson Ultimate Chopper             26   \n",
+      "1      S10_1949               1952 Alpine Renault 1300             27   \n",
+      "2      S10_2016                  1996 Moto Guzzi 1100i             26   \n",
+      "3      S10_4698   2003 Harley-Davidson Eagle Drag Bike             25   \n",
+      "4      S10_4757                    1972 Alfa Romeo GTA             27   \n",
+      "..          ...                                    ...            ...   \n",
+      "105   S700_3505                            The Titanic             22   \n",
+      "106   S700_3962                         The Queen Mary             24   \n",
+      "107   S700_4002              American Airlines: MD-11S             26   \n",
+      "108    S72_1253                       Boeing X-32A JSF             27   \n",
+      "109    S72_3212                             Pont Yacht             24   \n",
+      "\n",
+      "     Nombre_commande  quatite_total  \n",
+      "0                 28         1026.0  \n",
+      "1                 28          961.0  \n",
+      "2                 28          999.0  \n",
+      "3                 28          985.0  \n",
+      "4                 28         1000.0  \n",
+      "..               ...            ...  \n",
+      "105               27          952.0  \n",
+      "106               27          883.0  \n",
+      "107               28         1073.0  \n",
+      "108               28          960.0  \n",
+      "109               27          958.0  \n",
+      "\n",
+      "[110 rows x 5 columns]\n"
+     ]
+    }
+   ],
+   "source": [
+    "\n",
+    "Q4= pandas.read_sql_query(\"\"\"SELECT t0.productCode, t0.productName,\n",
+    "    Count(distinct t2.customerNumber) as Nombre_client,\n",
+    "    count(distinct t1.orderNumber) as Nombre_commande,\n",
+    "    sum(quantityOrdered) as quatite_total\n",
+    "            from Products t0\n",
+    "            left join OrderDetails as t1 on t0.productCode=t1.productCode\n",
+    "            left join Orders as t2 on t1.orderNumber=t2.orderNumber\n",
+    "            group by t0.productCode\"\"\",conn)\n",
+    "print(Q4)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 73,
+   "id": "943f93d9",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "         country  nombre_commande  montant_total  montant_total_paye\n",
+      "0      Australia               19     2182269.38        2.482541e+07\n",
+      "1        Austria                7      606187.59        4.090982e+06\n",
+      "2        Belgium                7      283705.44        1.931535e+06\n",
+      "3         Canada                7      448157.12        4.487022e+06\n",
+      "4        Denmark                7      781357.50        7.001114e+06\n",
+      "5        Finland                9      988745.73        1.009620e+07\n",
+      "6         France               37     3160296.75        3.141444e+07\n",
+      "7        Germany                7      576293.44        4.971661e+06\n",
+      "8      Hong Kong                2       48784.36        7.805498e+05\n",
+      "9        Ireland                2      115512.86        9.241029e+05\n",
+      "10        Israel                0            NaN                 NaN\n",
+      "11         Italy               10      945208.16        1.324310e+07\n",
+      "12         Japan                6      496898.36        4.837611e+06\n",
+      "13   Netherlands                0            NaN                 NaN\n",
+      "14   New Zealand               15     1736137.04        1.710337e+07\n",
+      "15        Norway                9      848125.78        8.870124e+06\n",
+      "16   Philippines                3      282047.19        2.444409e+06\n",
+      "17        Poland                0            NaN                 NaN\n",
+      "18      Portugal                0            NaN                 NaN\n",
+      "19        Russia                0            NaN                 NaN\n",
+      "20     Singapore                9     1038454.91        1.150336e+07\n",
+      "21  South Africa                0            NaN                 NaN\n",
+      "22         Spain               36    12665636.19        2.123241e+08\n",
+      "23        Sweden                7      554287.75        6.541197e+06\n",
+      "24   Switzerland                2      235427.12        3.649120e+06\n",
+      "25            UK               13     1204373.23        1.506256e+07\n",
+      "26           USA              112    14228729.12        1.957451e+08\n"
+     ]
+    }
+   ],
+   "source": [
+    "Q5= pandas.read_sql_query(\"\"\"SELECT t0.country,\n",
+    "    count(distinct t1.orderNumber) as nombre_commande,\n",
+    "    sum(quantityOrdered*priceEach) as montant_total,\n",
+    "    sum(amount) as montant_total_paye\n",
+    "            from Customers t0\n",
+    "            left join Orders as t1 on t0.customerNumber=t1.customerNumber\n",
+    "            left join OrderDetails as t2 on t1.orderNumber=t2.orderNumber\n",
+    "            left join Payments as t3 on t0.customerNumber=t3.customerNumber\n",
+    "            group by t0.country\"\"\",conn)\n",
+    "print(Q5)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 75,
+   "id": "be9e2b1d",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "      productLine    country  nombre_commande\n",
+      "0    Classic Cars       None                0\n",
+      "1    Classic Cars  Australia               12\n",
+      "2    Classic Cars    Austria                5\n",
+      "3    Classic Cars    Belgium                2\n",
+      "4    Classic Cars     Canada                6\n",
+      "..            ...        ...              ...\n",
+      "122  Vintage Cars  Singapore                4\n",
+      "123  Vintage Cars      Spain               22\n",
+      "124  Vintage Cars     Sweden                4\n",
+      "125  Vintage Cars         UK               10\n",
+      "126  Vintage Cars        USA               67\n",
+      "\n",
+      "[127 rows x 3 columns]\n"
+     ]
+    }
+   ],
+   "source": [
+    "Q6= pandas.read_sql_query(\"\"\"SELECT t0.productLine,\n",
+    "                          t3.country,\n",
+    "    count(distinct t1.orderNumber) as nombre_commande\n",
+    "            from Products t0\n",
+    "            left join OrderDetails as t1 on t0.productCode=t1.productCode\n",
+    "            left join Orders as t2 on t1.orderNumber=t2.orderNumber\n",
+    "            left join Customers as t3 on t2.customerNumber=t3.customerNumber\n",
+    "            group by t0.productLine, t3.country\"\"\",conn)\n",
+    "print(Q6)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 76,
+   "id": "9637bbf0",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "      productLine    country  montant_total_paye\n",
+      "0    Classic Cars       None                 NaN\n",
+      "1    Classic Cars  Australia           566642.90\n",
+      "2    Classic Cars    Austria           134939.48\n",
+      "3    Classic Cars    Belgium           100000.67\n",
+      "4    Classic Cars     Canada           190385.59\n",
+      "..            ...        ...                 ...\n",
+      "122  Vintage Cars  Singapore           285900.83\n",
+      "123  Vintage Cars      Spain          1087510.36\n",
+      "124  Vintage Cars     Sweden           210014.21\n",
+      "125  Vintage Cars         UK           438077.65\n",
+      "126  Vintage Cars        USA          3162135.35\n",
+      "\n",
+      "[127 rows x 3 columns]\n"
+     ]
+    }
+   ],
+   "source": [
+    "Q7= pandas.read_sql_query(\"\"\"SELECT t0.productLine,\n",
+    "                          t3.country,\n",
+    "    sum(distinct t4.amount) as montant_total_paye\n",
+    "            from Products t0\n",
+    "            left join OrderDetails as t1 on t0.productCode=t1.productCode\n",
+    "            left join Orders as t2 on t1.orderNumber=t2.orderNumber\n",
+    "            left join Customers as t3 on t2.customerNumber=t3.customerNumber\n",
+    "            left join Payments as t4 on t3.customerNumber=t4.customerNumber\n",
+    "            group by t0.productLine, t3.country\"\"\",conn)\n",
+    "print(Q7)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 77,
+   "id": "49541a05",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "                            productName  marge_moy\n",
+      "0              1952 Alpine Renault 1300  99.006429\n",
+      "1  2003 Harley-Davidson Eagle Drag Bike  95.235000\n",
+      "2           1992 Ferrari 360 Spider red  83.334906\n",
+      "3                      2002 Suzuki XREO  83.201429\n",
+      "4                1928 Mercedes-Benz SSK  82.696786\n",
+      "5                     2001 Ferrari Enzo  81.043704\n",
+      "6                      1969 Ford Falcon  77.335926\n",
+      "7        1948 Porsche Type 356 Roadster  72.636800\n",
+      "8          1999 Indy 500 Monte Carlo SS  71.794400\n",
+      "9              1917 Grand Touring Sedan  70.432800\n"
+     ]
+    }
+   ],
+   "source": [
+    "Q8= pandas.read_sql_query(\"\"\"SELECT t0.productName,\n",
+    "    avg(priceEach - buyPrice) as marge_moy\n",
+    "            from Products t0\n",
+    "            left join OrderDetails as t1 on t0.productCode=t1.productCode\n",
+    "            group by t0.productCode\n",
+    "            order by marge_moy desc\n",
+    "            limit 10\"\"\",conn)\n",
+    "print(Q8)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 78,
+   "id": "73277b31",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "                                productName                  customerName  \\\n",
+      "0       18th Century Vintage Horse Carriage  Online Diecast Creations Co.   \n",
+      "1                     18th century schooner          Classic Legends Inc.   \n",
+      "2                         1903 Ford Model A        Euro+ Shopping Channel   \n",
+      "3               1913 Ford Model T Speedster       Anna's Decorations, Ltd   \n",
+      "4                  1917 Grand Touring Sedan  Motor Mint Distributors Inc.   \n",
+      "5          1928 British Royal Navy Airplane       Tokyo Collectables, Ltd   \n",
+      "6                    1928 Mercedes-Benz SSK                AV Stores, Co.   \n",
+      "7                        1934 Ford V8 Coupe  Online Diecast Creations Co.   \n",
+      "8                     1936 Chrysler Airflow    Corrida Auto Replicas, Ltd   \n",
+      "9                      1937 Lincoln Berline            Signal Gift Stores   \n",
+      "10                   1940 Ford Pickup Truck               Mini Wheels Co.   \n",
+      "11                         1940s Ford truck       Anna's Decorations, Ltd   \n",
+      "12  1941 Chevrolet Special Deluxe Cabriolet       Oulu Toy Supplies, Inc.   \n",
+      "13                       1949 Jaguar XK 120        Euro+ Shopping Channel   \n",
+      "14                        1952 Citroen-15CV                AV Stores, Co.   \n",
+      "15                  1956 Porsche 356A Coupe           Suominen Souveniers   \n",
+      "16                        1957 Chevy Pickup  Mini Gifts Distributors Ltd.   \n",
+      "17                1957 Corvette Convertible           Suominen Souveniers   \n",
+      "18                           1958 Setra Bus       Anna's Decorations, Ltd   \n",
+      "19                   1962 LanciaA Delta 16V  Online Diecast Creations Co.   \n",
+      "20                   1964 Mercedec Tour Bus               Vitachrome Inc.   \n",
+      "21                    1965 Aston Martin DB5             Toys4GrownUps.com   \n",
+      "22                       1968 Dodge Charger    Down Under Souveniers, Inc   \n",
+      "23                        1968 Ford Mustang             Land of Toys Inc.   \n",
+      "24                1969 Chevrolet Camaro Z28                AV Stores, Co.   \n",
+      "25                       1969 Corvair Monza               Vitachrome Inc.   \n",
+      "26                         1969 Ford Falcon     La Corne D'abondance, Co.   \n",
+      "27    1969 Harley Davidson Ultimate Chopper             La Rochelle Gifts   \n",
+      "28                      1972 Alfa Romeo GTA            Baane Mini Imports   \n",
+      "29                1974 Ducati 350 Mk3 Desmo  Mini Gifts Distributors Ltd.   \n",
+      "30              1980s Black Hawk Helicopter             Kelly's Gift Shop   \n",
+      "31              1992 Ferrari 360 Spider red       Anna's Decorations, Ltd   \n",
+      "32        1992 Porsche Cayenne Turbo Silver  Mini Gifts Distributors Ltd.   \n",
+      "33                         1995 Honda Civic  Motor Mint Distributors Inc.   \n",
+      "34                    1996 Moto Guzzi 1100i       Tokyo Collectables, Ltd   \n",
+      "35                         1997 BMW F650 ST             Land of Toys Inc.   \n",
+      "36           1998 Chrysler Plymouth Prowler  Mini Gifts Distributors Ltd.   \n",
+      "37             1999 Indy 500 Monte Carlo SS            Reims Collectables   \n",
+      "38                   1999 Yamaha Speed Boat      Danish Wholesale Imports   \n",
+      "39                        2001 Ferrari Enzo            Baane Mini Imports   \n",
+      "40                      2002 Chevy Corvette                AV Stores, Co.   \n",
+      "41     2003 Harley-Davidson Eagle Drag Bike       Tokyo Collectables, Ltd   \n",
+      "42         Diamond T620 Semi-Skirted Tanker  Mini Gifts Distributors Ltd.   \n",
+      "\n",
+      "    customerNumber  marge  nombre_commande  \n",
+      "0              363 -13.70                2  \n",
+      "1              424 -10.37                3  \n",
+      "2              141  -6.78                1  \n",
+      "3              276 -15.53                1  \n",
+      "4              486 -12.66                1  \n",
+      "5              398 -16.09                2  \n",
+      "6              187 -19.89                2  \n",
+      "7              363  -4.48                1  \n",
+      "8              458  -7.15                1  \n",
+      "9              112 -24.51                2  \n",
+      "10             129 -18.08                2  \n",
+      "11             276 -27.23                1  \n",
+      "12             311  -4.09                2  \n",
+      "13             141  -9.75                1  \n",
+      "14             187 -30.56                2  \n",
+      "15             334  -3.72                2  \n",
+      "16             124 -19.99                1  \n",
+      "17             334 -11.75                2  \n",
+      "18             276 -14.70                1  \n",
+      "19             363 -41.43                3  \n",
+      "20             181 -37.38                2  \n",
+      "21             205  -9.66                2  \n",
+      "22             323  -2.01                2  \n",
+      "23             131 -23.87                5  \n",
+      "24             187 -16.32                1  \n",
+      "25             181 -34.81                2  \n",
+      "26             172 -19.67                2  \n",
+      "27             119 -13.90                1  \n",
+      "28             121 -20.75                4  \n",
+      "29             124  -7.15                1  \n",
+      "30             496 -18.60                3  \n",
+      "31             276 -21.05                1  \n",
+      "32             124 -19.46                1  \n",
+      "33             486 -61.42                3  \n",
+      "34             398  -0.07                3  \n",
+      "35             131  -3.01                1  \n",
+      "36             124 -13.51                2  \n",
+      "37             353  -4.44                1  \n",
+      "38             145  -5.75                1  \n",
+      "39             121 -31.59                4  \n",
+      "40             187 -24.93                1  \n",
+      "41             398 -14.35                2  \n",
+      "42             124 -11.74                1  \n"
+     ]
+    }
+   ],
+   "source": [
+    "Q9= pandas.read_sql_query(\"\"\"SELECT t0.productName,\n",
+    "                          t3.customerName,t3.customerNumber,\n",
+    "    (priceEach - buyPrice) as marge,\n",
+    "    sum(case when (priceEach - buyPrice) <=0 then 1 else 0 end) as nombre_commande\n",
+    "            from Products t0\n",
+    "            left join OrderDetails as t1 on t0.productCode=t1.productCode\n",
+    "            left join Orders as t2 on t1.orderNumber=t2.orderNumber\n",
+    "            left join Customers as t3 on t2.customerNumber=t3.customerNumber\n",
+    "            where marge <=0\n",
+    "            group by t0.productName\"\"\",conn)\n",
+    "print(Q9)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 79,
+   "id": "1d4b3320",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "                   customerName  montant_total  montant_total_paye\n",
+      "0    Australian Collectors, Co.      385363.80          3803462.17\n",
+      "1    Australian Collectors, Co.      773683.12          4616817.86\n",
+      "2             Atelier graphique      380944.14          3681086.32\n",
+      "3    Australian Collectors, Co.      619126.91          3783800.96\n",
+      "4            Baane Mini Imports      321080.48          3110036.71\n",
+      "..                          ...            ...                 ...\n",
+      "104           La Rochelle Gifts      379448.19          5213490.91\n",
+      "105           La Rochelle Gifts      340031.16          5339307.28\n",
+      "106           La Rochelle Gifts      264140.28          3885156.42\n",
+      "107           Land of Toys Inc.      199570.17          3736749.03\n",
+      "108           La Rochelle Gifts      304568.59          5376226.58\n",
+      "\n",
+      "[109 rows x 3 columns]\n"
+     ]
+    }
+   ],
+   "source": [
+    "Q10= pandas.read_sql_query(\"\"\"SELECT t0.customerName,\n",
+    "    sum(quantityOrdered*priceEach) as montant_total,\n",
+    "    sum(amount) as montant_total_paye\n",
+    "            from Customers t0\n",
+    "            left join Orders as t1 on t0.customerNumber=t1.customerNumber\n",
+    "            left join OrderDetails as t2 on t1.orderNumber=t2.orderNumber\n",
+    "            left join Products as ta on ta.productCode=t2.productCode\n",
+    "            left join Payments as t3 on t0.customerNumber=t3.customerNumber\n",
+    "            group by ta.productCode\n",
+    "            having montant_total_paye > montant_total\"\"\",conn)\n",
+    "print(Q10)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "625efac5",
+   "metadata": {},
+   "source": [
+    "# Récupération du contenu avec des requêtes SQL"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "id": "addfe628",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "employe = pandas.read_sql_query(\n",
+    "    \"SELECT * FROM Employees INNER JOIN Offices USING (officeCode);\", \n",
+    "    conn\n",
+    ")\n",
+    "\n",
+    "customers = pandas.read_sql_query(\n",
+    "    \"SELECT * FROM Customers;\", \n",
+    "    conn\n",
+    ")\n",
+    "\n",
+    "Payments = pandas.read_sql_query(\n",
+    "    \"SELECT * FROM Payments;\", \n",
+    "    conn\n",
+    ")\n",
+    "\n",
+    "product = pandas.read_sql_query(\n",
+    "    \"SELECT * FROM Products;\", \n",
+    "    conn\n",
+    ")\n",
+    "\n",
+    "order_detail = pandas.read_sql_query(\n",
+    "    \"SELECT * FROM OrderDetails INNER JOIN Products USING (productCode);\", \n",
+    "    conn\n",
+    ")\n",
+    "\n",
+    "\n",
+    "order = pandas.read_sql_query(\n",
+    "    \"SELECT * FROM Orders;\", \n",
+    "    conn\n",
+    ")\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "7c0b3870",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "employe = employe.assign()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "id": "036a2863",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "InsertManyResult([ObjectId('675c4fc7f5c710c5a290e9ec'), ObjectId('675c4fc7f5c710c5a290e9ed'), ObjectId('675c4fc7f5c710c5a290e9ee'), ObjectId('675c4fc7f5c710c5a290e9ef'), ObjectId('675c4fc7f5c710c5a290e9f0'), ObjectId('675c4fc7f5c710c5a290e9f1'), ObjectId('675c4fc7f5c710c5a290e9f2'), ObjectId('675c4fc7f5c710c5a290e9f3'), ObjectId('675c4fc7f5c710c5a290e9f4'), ObjectId('675c4fc7f5c710c5a290e9f5'), ObjectId('675c4fc7f5c710c5a290e9f6'), ObjectId('675c4fc7f5c710c5a290e9f7'), ObjectId('675c4fc7f5c710c5a290e9f8'), ObjectId('675c4fc7f5c710c5a290e9f9'), ObjectId('675c4fc7f5c710c5a290e9fa'), ObjectId('675c4fc7f5c710c5a290e9fb'), ObjectId('675c4fc7f5c710c5a290e9fc'), ObjectId('675c4fc7f5c710c5a290e9fd'), ObjectId('675c4fc7f5c710c5a290e9fe'), ObjectId('675c4fc7f5c710c5a290e9ff'), ObjectId('675c4fc7f5c710c5a290ea00'), ObjectId('675c4fc7f5c710c5a290ea01'), ObjectId('675c4fc7f5c710c5a290ea02')], acknowledged=True)"
+      ]
+     },
+     "execution_count": 8,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "db.employe.insert_many(\n",
+    "    employe.drop(columns=[\"officeCode\"])\n",
+    "    .to_dict(orient = \"records\")\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "efec1692",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "Payment = [\n",
+    "    Payments.query('customerNumber== @id')\n",
+    "    .drop(columns=[\"customerNumber\"])\n",
+    "    .to_dict(orient = \"records\")\n",
+    "    for id in customers.customerNumber\n",
+    "]\n",
+    "\n",
+    "customer = customers.assign(payments = Payment)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "id": "99a1d6d4",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "InsertManyResult([ObjectId('675c513df5c710c5a290ea03'), ObjectId('675c513df5c710c5a290ea04'), ObjectId('675c513df5c710c5a290ea05'), ObjectId('675c513df5c710c5a290ea06'), ObjectId('675c513df5c710c5a290ea07'), ObjectId('675c513df5c710c5a290ea08'), ObjectId('675c513df5c710c5a290ea09'), ObjectId('675c513df5c710c5a290ea0a'), ObjectId('675c513df5c710c5a290ea0b'), ObjectId('675c513df5c710c5a290ea0c'), ObjectId('675c513df5c710c5a290ea0d'), ObjectId('675c513df5c710c5a290ea0e'), ObjectId('675c513df5c710c5a290ea0f'), ObjectId('675c513df5c710c5a290ea10'), ObjectId('675c513df5c710c5a290ea11'), ObjectId('675c513df5c710c5a290ea12'), ObjectId('675c513df5c710c5a290ea13'), ObjectId('675c513df5c710c5a290ea14'), ObjectId('675c513df5c710c5a290ea15'), ObjectId('675c513df5c710c5a290ea16'), ObjectId('675c513df5c710c5a290ea17'), ObjectId('675c513df5c710c5a290ea18'), ObjectId('675c513df5c710c5a290ea19'), ObjectId('675c513df5c710c5a290ea1a'), ObjectId('675c513df5c710c5a290ea1b'), ObjectId('675c513df5c710c5a290ea1c'), ObjectId('675c513df5c710c5a290ea1d'), ObjectId('675c513df5c710c5a290ea1e'), ObjectId('675c513df5c710c5a290ea1f'), ObjectId('675c513df5c710c5a290ea20'), ObjectId('675c513df5c710c5a290ea21'), ObjectId('675c513df5c710c5a290ea22'), ObjectId('675c513df5c710c5a290ea23'), ObjectId('675c513df5c710c5a290ea24'), ObjectId('675c513df5c710c5a290ea25'), ObjectId('675c513df5c710c5a290ea26'), ObjectId('675c513df5c710c5a290ea27'), ObjectId('675c513df5c710c5a290ea28'), ObjectId('675c513df5c710c5a290ea29'), ObjectId('675c513df5c710c5a290ea2a'), ObjectId('675c513df5c710c5a290ea2b'), ObjectId('675c513df5c710c5a290ea2c'), ObjectId('675c513df5c710c5a290ea2d'), ObjectId('675c513df5c710c5a290ea2e'), ObjectId('675c513df5c710c5a290ea2f'), ObjectId('675c513df5c710c5a290ea30'), ObjectId('675c513df5c710c5a290ea31'), ObjectId('675c513df5c710c5a290ea32'), ObjectId('675c513df5c710c5a290ea33'), ObjectId('675c513df5c710c5a290ea34'), ObjectId('675c513df5c710c5a290ea35'), ObjectId('675c513df5c710c5a290ea36'), ObjectId('675c513df5c710c5a290ea37'), ObjectId('675c513df5c710c5a290ea38'), ObjectId('675c513df5c710c5a290ea39'), ObjectId('675c513df5c710c5a290ea3a'), ObjectId('675c513df5c710c5a290ea3b'), ObjectId('675c513df5c710c5a290ea3c'), ObjectId('675c513df5c710c5a290ea3d'), ObjectId('675c513df5c710c5a290ea3e'), ObjectId('675c513df5c710c5a290ea3f'), ObjectId('675c513df5c710c5a290ea40'), ObjectId('675c513df5c710c5a290ea41'), ObjectId('675c513df5c710c5a290ea42'), ObjectId('675c513df5c710c5a290ea43'), ObjectId('675c513df5c710c5a290ea44'), ObjectId('675c513df5c710c5a290ea45'), ObjectId('675c513df5c710c5a290ea46'), ObjectId('675c513df5c710c5a290ea47'), ObjectId('675c513df5c710c5a290ea48'), ObjectId('675c513df5c710c5a290ea49'), ObjectId('675c513df5c710c5a290ea4a'), ObjectId('675c513df5c710c5a290ea4b'), ObjectId('675c513df5c710c5a290ea4c'), ObjectId('675c513df5c710c5a290ea4d'), ObjectId('675c513df5c710c5a290ea4e'), ObjectId('675c513df5c710c5a290ea4f'), ObjectId('675c513df5c710c5a290ea50'), ObjectId('675c513df5c710c5a290ea51'), ObjectId('675c513df5c710c5a290ea52'), ObjectId('675c513df5c710c5a290ea53'), ObjectId('675c513df5c710c5a290ea54'), ObjectId('675c513df5c710c5a290ea55'), ObjectId('675c513df5c710c5a290ea56'), ObjectId('675c513df5c710c5a290ea57'), ObjectId('675c513df5c710c5a290ea58'), ObjectId('675c513df5c710c5a290ea59'), ObjectId('675c513df5c710c5a290ea5a'), ObjectId('675c513df5c710c5a290ea5b'), ObjectId('675c513df5c710c5a290ea5c'), ObjectId('675c513df5c710c5a290ea5d'), ObjectId('675c513df5c710c5a290ea5e'), ObjectId('675c513df5c710c5a290ea5f'), ObjectId('675c513df5c710c5a290ea60'), ObjectId('675c513df5c710c5a290ea61'), ObjectId('675c513df5c710c5a290ea62'), ObjectId('675c513df5c710c5a290ea63'), ObjectId('675c513df5c710c5a290ea64'), ObjectId('675c513df5c710c5a290ea65'), ObjectId('675c513df5c710c5a290ea66'), ObjectId('675c513df5c710c5a290ea67'), ObjectId('675c513df5c710c5a290ea68'), ObjectId('675c513df5c710c5a290ea69'), ObjectId('675c513df5c710c5a290ea6a'), ObjectId('675c513df5c710c5a290ea6b'), ObjectId('675c513df5c710c5a290ea6c'), ObjectId('675c513df5c710c5a290ea6d'), ObjectId('675c513df5c710c5a290ea6e'), ObjectId('675c513df5c710c5a290ea6f'), ObjectId('675c513df5c710c5a290ea70'), ObjectId('675c513df5c710c5a290ea71'), ObjectId('675c513df5c710c5a290ea72'), ObjectId('675c513df5c710c5a290ea73'), ObjectId('675c513df5c710c5a290ea74'), ObjectId('675c513df5c710c5a290ea75'), ObjectId('675c513df5c710c5a290ea76'), ObjectId('675c513df5c710c5a290ea77'), ObjectId('675c513df5c710c5a290ea78'), ObjectId('675c513df5c710c5a290ea79'), ObjectId('675c513df5c710c5a290ea7a'), ObjectId('675c513df5c710c5a290ea7b'), ObjectId('675c513df5c710c5a290ea7c')], acknowledged=True)"
+      ]
+     },
+     "execution_count": 10,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "db.customers.insert_many(\n",
+    "    customer.to_dict(orient = \"records\")\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "id": "34aed40d",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>orderNumber</th>\n",
+       "      <th>orderDate</th>\n",
+       "      <th>requiredDate</th>\n",
+       "      <th>shippedDate</th>\n",
+       "      <th>status</th>\n",
+       "      <th>comments</th>\n",
+       "      <th>customerNumber</th>\n",
+       "      <th>details</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>10100</td>\n",
+       "      <td>2003/1/6 0:00:00</td>\n",
+       "      <td>2003/1/13 0:00:00</td>\n",
+       "      <td>2003/1/10 0:00:00</td>\n",
+       "      <td>Shipped</td>\n",
+       "      <td>NULL</td>\n",
+       "      <td>363</td>\n",
+       "      <td>[{'quantityOrdered': 30, 'priceEach': 171.7, '...</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>10101</td>\n",
+       "      <td>2003/1/9 0:00:00</td>\n",
+       "      <td>2003/1/18 0:00:00</td>\n",
+       "      <td>2003/1/11 0:00:00</td>\n",
+       "      <td>Shipped</td>\n",
+       "      <td>Check on availability.</td>\n",
+       "      <td>128</td>\n",
+       "      <td>[{'quantityOrdered': 25, 'priceEach': 151.28, ...</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>10102</td>\n",
+       "      <td>2003/1/10 0:00:00</td>\n",
+       "      <td>2003/1/18 0:00:00</td>\n",
+       "      <td>2003/1/14 0:00:00</td>\n",
+       "      <td>Shipped</td>\n",
+       "      <td>NULL</td>\n",
+       "      <td>181</td>\n",
+       "      <td>[{'quantityOrdered': 39, 'priceEach': 123.29, ...</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>10103</td>\n",
+       "      <td>2003/1/29 0:00:00</td>\n",
+       "      <td>2003/2/7 0:00:00</td>\n",
+       "      <td>2003/2/2 0:00:00</td>\n",
+       "      <td>Shipped</td>\n",
+       "      <td>NULL</td>\n",
+       "      <td>121</td>\n",
+       "      <td>[{'quantityOrdered': 26, 'priceEach': 207.87, ...</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>10104</td>\n",
+       "      <td>2003/1/31 0:00:00</td>\n",
+       "      <td>2003/2/9 0:00:00</td>\n",
+       "      <td>2003/2/1 0:00:00</td>\n",
+       "      <td>Shipped</td>\n",
+       "      <td>NULL</td>\n",
+       "      <td>141</td>\n",
+       "      <td>[{'quantityOrdered': 34, 'priceEach': 175.25, ...</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "   orderNumber          orderDate       requiredDate        shippedDate  \\\n",
+       "0        10100   2003/1/6 0:00:00  2003/1/13 0:00:00  2003/1/10 0:00:00   \n",
+       "1        10101   2003/1/9 0:00:00  2003/1/18 0:00:00  2003/1/11 0:00:00   \n",
+       "2        10102  2003/1/10 0:00:00  2003/1/18 0:00:00  2003/1/14 0:00:00   \n",
+       "3        10103  2003/1/29 0:00:00   2003/2/7 0:00:00   2003/2/2 0:00:00   \n",
+       "4        10104  2003/1/31 0:00:00   2003/2/9 0:00:00   2003/2/1 0:00:00   \n",
+       "\n",
+       "    status                comments  customerNumber  \\\n",
+       "0  Shipped                    NULL             363   \n",
+       "1  Shipped  Check on availability.             128   \n",
+       "2  Shipped                    NULL             181   \n",
+       "3  Shipped                    NULL             121   \n",
+       "4  Shipped                    NULL             141   \n",
+       "\n",
+       "                                             details  \n",
+       "0  [{'quantityOrdered': 30, 'priceEach': 171.7, '...  \n",
+       "1  [{'quantityOrdered': 25, 'priceEach': 151.28, ...  \n",
+       "2  [{'quantityOrdered': 39, 'priceEach': 123.29, ...  \n",
+       "3  [{'quantityOrdered': 26, 'priceEach': 207.87, ...  \n",
+       "4  [{'quantityOrdered': 34, 'priceEach': 175.25, ...  "
+      ]
+     },
+     "execution_count": 13,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "detail = [\n",
+    "    order_detail.query('orderNumber== @id')\n",
+    "    .drop(columns=[\"orderNumber\",\"productCode\"])\n",
+    "    .to_dict(orient = \"records\")\n",
+    "    for id in order.orderNumber\n",
+    "]\n",
+    "\n",
+    "order = order.assign(details = detail)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "id": "a432bb71",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "InsertManyResult([ObjectId('6765af8d26c6ab393b7b3038'), ObjectId('6765af8d26c6ab393b7b3039'), ObjectId('6765af8d26c6ab393b7b303a'), ObjectId('6765af8d26c6ab393b7b303b'), ObjectId('6765af8d26c6ab393b7b303c'), ObjectId('6765af8d26c6ab393b7b303d'), ObjectId('6765af8d26c6ab393b7b303e'), ObjectId('6765af8d26c6ab393b7b303f'), ObjectId('6765af8d26c6ab393b7b3040'), ObjectId('6765af8d26c6ab393b7b3041'), ObjectId('6765af8d26c6ab393b7b3042'), ObjectId('6765af8d26c6ab393b7b3043'), ObjectId('6765af8d26c6ab393b7b3044'), ObjectId('6765af8d26c6ab393b7b3045'), ObjectId('6765af8d26c6ab393b7b3046'), ObjectId('6765af8d26c6ab393b7b3047'), ObjectId('6765af8d26c6ab393b7b3048'), ObjectId('6765af8d26c6ab393b7b3049'), ObjectId('6765af8d26c6ab393b7b304a'), ObjectId('6765af8d26c6ab393b7b304b'), ObjectId('6765af8d26c6ab393b7b304c'), ObjectId('6765af8d26c6ab393b7b304d'), ObjectId('6765af8d26c6ab393b7b304e'), ObjectId('6765af8d26c6ab393b7b304f'), ObjectId('6765af8d26c6ab393b7b3050'), ObjectId('6765af8d26c6ab393b7b3051'), ObjectId('6765af8d26c6ab393b7b3052'), ObjectId('6765af8d26c6ab393b7b3053'), ObjectId('6765af8d26c6ab393b7b3054'), ObjectId('6765af8d26c6ab393b7b3055'), ObjectId('6765af8d26c6ab393b7b3056'), ObjectId('6765af8d26c6ab393b7b3057'), ObjectId('6765af8d26c6ab393b7b3058'), ObjectId('6765af8d26c6ab393b7b3059'), ObjectId('6765af8d26c6ab393b7b305a'), ObjectId('6765af8d26c6ab393b7b305b'), ObjectId('6765af8d26c6ab393b7b305c'), ObjectId('6765af8d26c6ab393b7b305d'), ObjectId('6765af8d26c6ab393b7b305e'), ObjectId('6765af8d26c6ab393b7b305f'), ObjectId('6765af8d26c6ab393b7b3060'), ObjectId('6765af8d26c6ab393b7b3061'), ObjectId('6765af8d26c6ab393b7b3062'), ObjectId('6765af8d26c6ab393b7b3063'), ObjectId('6765af8d26c6ab393b7b3064'), ObjectId('6765af8d26c6ab393b7b3065'), ObjectId('6765af8d26c6ab393b7b3066'), ObjectId('6765af8d26c6ab393b7b3067'), ObjectId('6765af8d26c6ab393b7b3068'), ObjectId('6765af8d26c6ab393b7b3069'), ObjectId('6765af8d26c6ab393b7b306a'), ObjectId('6765af8d26c6ab393b7b306b'), ObjectId('6765af8d26c6ab393b7b306c'), ObjectId('6765af8d26c6ab393b7b306d'), ObjectId('6765af8d26c6ab393b7b306e'), ObjectId('6765af8d26c6ab393b7b306f'), ObjectId('6765af8d26c6ab393b7b3070'), ObjectId('6765af8d26c6ab393b7b3071'), ObjectId('6765af8d26c6ab393b7b3072'), ObjectId('6765af8d26c6ab393b7b3073'), ObjectId('6765af8d26c6ab393b7b3074'), ObjectId('6765af8d26c6ab393b7b3075'), ObjectId('6765af8d26c6ab393b7b3076'), ObjectId('6765af8d26c6ab393b7b3077'), ObjectId('6765af8d26c6ab393b7b3078'), ObjectId('6765af8d26c6ab393b7b3079'), ObjectId('6765af8d26c6ab393b7b307a'), ObjectId('6765af8d26c6ab393b7b307b'), ObjectId('6765af8d26c6ab393b7b307c'), ObjectId('6765af8d26c6ab393b7b307d'), ObjectId('6765af8d26c6ab393b7b307e'), ObjectId('6765af8d26c6ab393b7b307f'), ObjectId('6765af8d26c6ab393b7b3080'), ObjectId('6765af8d26c6ab393b7b3081'), ObjectId('6765af8d26c6ab393b7b3082'), ObjectId('6765af8d26c6ab393b7b3083'), ObjectId('6765af8d26c6ab393b7b3084'), ObjectId('6765af8d26c6ab393b7b3085'), ObjectId('6765af8d26c6ab393b7b3086'), ObjectId('6765af8d26c6ab393b7b3087'), ObjectId('6765af8d26c6ab393b7b3088'), ObjectId('6765af8d26c6ab393b7b3089'), ObjectId('6765af8d26c6ab393b7b308a'), ObjectId('6765af8d26c6ab393b7b308b'), ObjectId('6765af8d26c6ab393b7b308c'), ObjectId('6765af8d26c6ab393b7b308d'), ObjectId('6765af8d26c6ab393b7b308e'), ObjectId('6765af8d26c6ab393b7b308f'), ObjectId('6765af8d26c6ab393b7b3090'), ObjectId('6765af8d26c6ab393b7b3091'), ObjectId('6765af8d26c6ab393b7b3092'), ObjectId('6765af8d26c6ab393b7b3093'), ObjectId('6765af8d26c6ab393b7b3094'), ObjectId('6765af8d26c6ab393b7b3095'), ObjectId('6765af8d26c6ab393b7b3096'), ObjectId('6765af8d26c6ab393b7b3097'), ObjectId('6765af8d26c6ab393b7b3098'), ObjectId('6765af8d26c6ab393b7b3099'), ObjectId('6765af8d26c6ab393b7b309a'), ObjectId('6765af8d26c6ab393b7b309b'), ObjectId('6765af8d26c6ab393b7b309c'), ObjectId('6765af8d26c6ab393b7b309d'), ObjectId('6765af8d26c6ab393b7b309e'), ObjectId('6765af8d26c6ab393b7b309f'), ObjectId('6765af8d26c6ab393b7b30a0'), ObjectId('6765af8d26c6ab393b7b30a1'), ObjectId('6765af8d26c6ab393b7b30a2'), ObjectId('6765af8d26c6ab393b7b30a3'), ObjectId('6765af8d26c6ab393b7b30a4'), ObjectId('6765af8d26c6ab393b7b30a5'), ObjectId('6765af8d26c6ab393b7b30a6'), ObjectId('6765af8d26c6ab393b7b30a7'), ObjectId('6765af8d26c6ab393b7b30a8'), ObjectId('6765af8d26c6ab393b7b30a9'), ObjectId('6765af8d26c6ab393b7b30aa'), ObjectId('6765af8d26c6ab393b7b30ab'), ObjectId('6765af8d26c6ab393b7b30ac'), ObjectId('6765af8d26c6ab393b7b30ad'), ObjectId('6765af8d26c6ab393b7b30ae'), ObjectId('6765af8d26c6ab393b7b30af'), ObjectId('6765af8d26c6ab393b7b30b0'), ObjectId('6765af8d26c6ab393b7b30b1'), ObjectId('6765af8d26c6ab393b7b30b2'), ObjectId('6765af8d26c6ab393b7b30b3'), ObjectId('6765af8d26c6ab393b7b30b4'), ObjectId('6765af8d26c6ab393b7b30b5'), ObjectId('6765af8d26c6ab393b7b30b6'), ObjectId('6765af8d26c6ab393b7b30b7'), ObjectId('6765af8d26c6ab393b7b30b8'), ObjectId('6765af8d26c6ab393b7b30b9'), ObjectId('6765af8d26c6ab393b7b30ba'), ObjectId('6765af8d26c6ab393b7b30bb'), ObjectId('6765af8d26c6ab393b7b30bc'), ObjectId('6765af8d26c6ab393b7b30bd'), ObjectId('6765af8d26c6ab393b7b30be'), ObjectId('6765af8d26c6ab393b7b30bf'), ObjectId('6765af8d26c6ab393b7b30c0'), ObjectId('6765af8d26c6ab393b7b30c1'), ObjectId('6765af8d26c6ab393b7b30c2'), ObjectId('6765af8d26c6ab393b7b30c3'), ObjectId('6765af8d26c6ab393b7b30c4'), ObjectId('6765af8d26c6ab393b7b30c5'), ObjectId('6765af8d26c6ab393b7b30c6'), ObjectId('6765af8d26c6ab393b7b30c7'), ObjectId('6765af8d26c6ab393b7b30c8'), ObjectId('6765af8d26c6ab393b7b30c9'), ObjectId('6765af8d26c6ab393b7b30ca'), ObjectId('6765af8d26c6ab393b7b30cb'), ObjectId('6765af8d26c6ab393b7b30cc'), ObjectId('6765af8d26c6ab393b7b30cd'), ObjectId('6765af8d26c6ab393b7b30ce'), ObjectId('6765af8d26c6ab393b7b30cf'), ObjectId('6765af8d26c6ab393b7b30d0'), ObjectId('6765af8d26c6ab393b7b30d1'), ObjectId('6765af8d26c6ab393b7b30d2'), ObjectId('6765af8d26c6ab393b7b30d3'), ObjectId('6765af8d26c6ab393b7b30d4'), ObjectId('6765af8d26c6ab393b7b30d5'), ObjectId('6765af8d26c6ab393b7b30d6'), ObjectId('6765af8d26c6ab393b7b30d7'), ObjectId('6765af8d26c6ab393b7b30d8'), ObjectId('6765af8d26c6ab393b7b30d9'), ObjectId('6765af8d26c6ab393b7b30da'), ObjectId('6765af8d26c6ab393b7b30db'), ObjectId('6765af8d26c6ab393b7b30dc'), ObjectId('6765af8d26c6ab393b7b30dd'), ObjectId('6765af8d26c6ab393b7b30de'), ObjectId('6765af8d26c6ab393b7b30df'), ObjectId('6765af8d26c6ab393b7b30e0'), ObjectId('6765af8d26c6ab393b7b30e1'), ObjectId('6765af8d26c6ab393b7b30e2'), ObjectId('6765af8d26c6ab393b7b30e3'), ObjectId('6765af8d26c6ab393b7b30e4'), ObjectId('6765af8d26c6ab393b7b30e5'), ObjectId('6765af8d26c6ab393b7b30e6'), ObjectId('6765af8d26c6ab393b7b30e7'), ObjectId('6765af8d26c6ab393b7b30e8'), ObjectId('6765af8d26c6ab393b7b30e9'), ObjectId('6765af8d26c6ab393b7b30ea'), ObjectId('6765af8d26c6ab393b7b30eb'), ObjectId('6765af8d26c6ab393b7b30ec'), ObjectId('6765af8d26c6ab393b7b30ed'), ObjectId('6765af8d26c6ab393b7b30ee'), ObjectId('6765af8d26c6ab393b7b30ef'), ObjectId('6765af8d26c6ab393b7b30f0'), ObjectId('6765af8d26c6ab393b7b30f1'), ObjectId('6765af8d26c6ab393b7b30f2'), ObjectId('6765af8d26c6ab393b7b30f3'), ObjectId('6765af8d26c6ab393b7b30f4'), ObjectId('6765af8d26c6ab393b7b30f5'), ObjectId('6765af8d26c6ab393b7b30f6'), ObjectId('6765af8d26c6ab393b7b30f7'), ObjectId('6765af8d26c6ab393b7b30f8'), ObjectId('6765af8d26c6ab393b7b30f9'), ObjectId('6765af8d26c6ab393b7b30fa'), ObjectId('6765af8d26c6ab393b7b30fb'), ObjectId('6765af8d26c6ab393b7b30fc'), ObjectId('6765af8d26c6ab393b7b30fd'), ObjectId('6765af8d26c6ab393b7b30fe'), ObjectId('6765af8d26c6ab393b7b30ff'), ObjectId('6765af8d26c6ab393b7b3100'), ObjectId('6765af8d26c6ab393b7b3101'), ObjectId('6765af8d26c6ab393b7b3102'), ObjectId('6765af8d26c6ab393b7b3103'), ObjectId('6765af8d26c6ab393b7b3104'), ObjectId('6765af8d26c6ab393b7b3105'), ObjectId('6765af8d26c6ab393b7b3106'), ObjectId('6765af8d26c6ab393b7b3107'), ObjectId('6765af8d26c6ab393b7b3108'), ObjectId('6765af8d26c6ab393b7b3109'), ObjectId('6765af8d26c6ab393b7b310a'), ObjectId('6765af8d26c6ab393b7b310b'), ObjectId('6765af8d26c6ab393b7b310c'), ObjectId('6765af8d26c6ab393b7b310d'), ObjectId('6765af8d26c6ab393b7b310e'), ObjectId('6765af8d26c6ab393b7b310f'), ObjectId('6765af8d26c6ab393b7b3110'), ObjectId('6765af8d26c6ab393b7b3111'), ObjectId('6765af8d26c6ab393b7b3112'), ObjectId('6765af8d26c6ab393b7b3113'), ObjectId('6765af8d26c6ab393b7b3114'), ObjectId('6765af8d26c6ab393b7b3115'), ObjectId('6765af8d26c6ab393b7b3116'), ObjectId('6765af8d26c6ab393b7b3117'), ObjectId('6765af8d26c6ab393b7b3118'), ObjectId('6765af8d26c6ab393b7b3119'), ObjectId('6765af8d26c6ab393b7b311a'), ObjectId('6765af8d26c6ab393b7b311b'), ObjectId('6765af8d26c6ab393b7b311c'), ObjectId('6765af8d26c6ab393b7b311d'), ObjectId('6765af8d26c6ab393b7b311e'), ObjectId('6765af8d26c6ab393b7b311f'), ObjectId('6765af8d26c6ab393b7b3120'), ObjectId('6765af8d26c6ab393b7b3121'), ObjectId('6765af8d26c6ab393b7b3122'), ObjectId('6765af8d26c6ab393b7b3123'), ObjectId('6765af8d26c6ab393b7b3124'), ObjectId('6765af8d26c6ab393b7b3125'), ObjectId('6765af8d26c6ab393b7b3126'), ObjectId('6765af8d26c6ab393b7b3127'), ObjectId('6765af8d26c6ab393b7b3128'), ObjectId('6765af8d26c6ab393b7b3129'), ObjectId('6765af8d26c6ab393b7b312a'), ObjectId('6765af8d26c6ab393b7b312b'), ObjectId('6765af8d26c6ab393b7b312c'), ObjectId('6765af8d26c6ab393b7b312d'), ObjectId('6765af8d26c6ab393b7b312e'), ObjectId('6765af8d26c6ab393b7b312f'), ObjectId('6765af8d26c6ab393b7b3130'), ObjectId('6765af8d26c6ab393b7b3131'), ObjectId('6765af8d26c6ab393b7b3132'), ObjectId('6765af8d26c6ab393b7b3133'), ObjectId('6765af8d26c6ab393b7b3134'), ObjectId('6765af8d26c6ab393b7b3135'), ObjectId('6765af8d26c6ab393b7b3136'), ObjectId('6765af8d26c6ab393b7b3137'), ObjectId('6765af8d26c6ab393b7b3138'), ObjectId('6765af8d26c6ab393b7b3139'), ObjectId('6765af8d26c6ab393b7b313a'), ObjectId('6765af8d26c6ab393b7b313b'), ObjectId('6765af8d26c6ab393b7b313c'), ObjectId('6765af8d26c6ab393b7b313d'), ObjectId('6765af8d26c6ab393b7b313e'), ObjectId('6765af8d26c6ab393b7b313f'), ObjectId('6765af8d26c6ab393b7b3140'), ObjectId('6765af8d26c6ab393b7b3141'), ObjectId('6765af8d26c6ab393b7b3142'), ObjectId('6765af8d26c6ab393b7b3143'), ObjectId('6765af8d26c6ab393b7b3144'), ObjectId('6765af8d26c6ab393b7b3145'), ObjectId('6765af8d26c6ab393b7b3146'), ObjectId('6765af8d26c6ab393b7b3147'), ObjectId('6765af8d26c6ab393b7b3148'), ObjectId('6765af8d26c6ab393b7b3149'), ObjectId('6765af8d26c6ab393b7b314a'), ObjectId('6765af8d26c6ab393b7b314b'), ObjectId('6765af8d26c6ab393b7b314c'), ObjectId('6765af8d26c6ab393b7b314d'), ObjectId('6765af8d26c6ab393b7b314e'), ObjectId('6765af8d26c6ab393b7b314f'), ObjectId('6765af8d26c6ab393b7b3150'), ObjectId('6765af8d26c6ab393b7b3151'), ObjectId('6765af8d26c6ab393b7b3152'), ObjectId('6765af8d26c6ab393b7b3153'), ObjectId('6765af8d26c6ab393b7b3154'), ObjectId('6765af8d26c6ab393b7b3155'), ObjectId('6765af8d26c6ab393b7b3156'), ObjectId('6765af8d26c6ab393b7b3157'), ObjectId('6765af8d26c6ab393b7b3158'), ObjectId('6765af8d26c6ab393b7b3159'), ObjectId('6765af8d26c6ab393b7b315a'), ObjectId('6765af8d26c6ab393b7b315b'), ObjectId('6765af8d26c6ab393b7b315c'), ObjectId('6765af8d26c6ab393b7b315d'), ObjectId('6765af8d26c6ab393b7b315e'), ObjectId('6765af8d26c6ab393b7b315f'), ObjectId('6765af8d26c6ab393b7b3160'), ObjectId('6765af8d26c6ab393b7b3161'), ObjectId('6765af8d26c6ab393b7b3162'), ObjectId('6765af8d26c6ab393b7b3163'), ObjectId('6765af8d26c6ab393b7b3164'), ObjectId('6765af8d26c6ab393b7b3165'), ObjectId('6765af8d26c6ab393b7b3166'), ObjectId('6765af8d26c6ab393b7b3167'), ObjectId('6765af8d26c6ab393b7b3168'), ObjectId('6765af8d26c6ab393b7b3169'), ObjectId('6765af8d26c6ab393b7b316a'), ObjectId('6765af8d26c6ab393b7b316b'), ObjectId('6765af8d26c6ab393b7b316c'), ObjectId('6765af8d26c6ab393b7b316d'), ObjectId('6765af8d26c6ab393b7b316e'), ObjectId('6765af8d26c6ab393b7b316f'), ObjectId('6765af8d26c6ab393b7b3170'), ObjectId('6765af8d26c6ab393b7b3171'), ObjectId('6765af8d26c6ab393b7b3172'), ObjectId('6765af8d26c6ab393b7b3173'), ObjectId('6765af8d26c6ab393b7b3174'), ObjectId('6765af8d26c6ab393b7b3175'), ObjectId('6765af8d26c6ab393b7b3176'), ObjectId('6765af8d26c6ab393b7b3177'), ObjectId('6765af8d26c6ab393b7b3178'), ObjectId('6765af8d26c6ab393b7b3179'), ObjectId('6765af8d26c6ab393b7b317a'), ObjectId('6765af8d26c6ab393b7b317b'), ObjectId('6765af8d26c6ab393b7b317c'), ObjectId('6765af8d26c6ab393b7b317d')], acknowledged=True)"
+      ]
+     },
+     "execution_count": 14,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "db.orders.insert_many(\n",
+    "    order.to_dict(orient = \"records\")\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "9155da80",
+   "metadata": {},
+   "source": [
+    "# Fermeture de la connexion : IMPORTANT à faire dans un cadre professionnel"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "24035a07",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "conn.close()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "8a543c2d",
+   "metadata": {},
+   "source": [
+    "# Récupération du contenu avec des rêquetes NoSQL MongoDB"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "id": "51d1a014",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>customerName</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>Havel &amp; Zbyszek Co</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>American Souvenirs Inc</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>Porto Imports Co.</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>Asian Shopping Network, Co</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>Natürlich Autos</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>5</th>\n",
+       "      <td>ANG Resellers</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>6</th>\n",
+       "      <td>Messner Shopping Network</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>7</th>\n",
+       "      <td>Franken Gifts, Co</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>8</th>\n",
+       "      <td>BG&amp;E Collectables</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>9</th>\n",
+       "      <td>Schuyler Imports</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>10</th>\n",
+       "      <td>Der Hund Imports</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>11</th>\n",
+       "      <td>Cramer Spezialitäten, Ltd</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>12</th>\n",
+       "      <td>Asian Treasures, Inc.</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>13</th>\n",
+       "      <td>SAR Distributors, Co</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>14</th>\n",
+       "      <td>Kommission Auto</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>15</th>\n",
+       "      <td>Lisboa Souveniers, Inc</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>16</th>\n",
+       "      <td>Precious Collectables</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>17</th>\n",
+       "      <td>Stuttgart Collectable Exchange</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>18</th>\n",
+       "      <td>Feuer Online Stores, Inc</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>19</th>\n",
+       "      <td>Warburg Exchange</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>20</th>\n",
+       "      <td>Anton Designs, Ltd.</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>21</th>\n",
+       "      <td>Mit Vergnügen &amp; Co.</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>22</th>\n",
+       "      <td>Kremlin Collectables, Co.</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>23</th>\n",
+       "      <td>Raanan Stores, Inc</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                      customerName\n",
+       "0               Havel & Zbyszek Co\n",
+       "1           American Souvenirs Inc\n",
+       "2                Porto Imports Co.\n",
+       "3       Asian Shopping Network, Co\n",
+       "4                  Natürlich Autos\n",
+       "5                    ANG Resellers\n",
+       "6         Messner Shopping Network\n",
+       "7                Franken Gifts, Co\n",
+       "8                BG&E Collectables\n",
+       "9                 Schuyler Imports\n",
+       "10                Der Hund Imports\n",
+       "11       Cramer Spezialitäten, Ltd\n",
+       "12           Asian Treasures, Inc.\n",
+       "13            SAR Distributors, Co\n",
+       "14                 Kommission Auto\n",
+       "15          Lisboa Souveniers, Inc\n",
+       "16           Precious Collectables\n",
+       "17  Stuttgart Collectable Exchange\n",
+       "18        Feuer Online Stores, Inc\n",
+       "19                Warburg Exchange\n",
+       "20             Anton Designs, Ltd.\n",
+       "21             Mit Vergnügen & Co.\n",
+       "22       Kremlin Collectables, Co.\n",
+       "23              Raanan Stores, Inc"
+      ]
+     },
+     "execution_count": 5,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# Requête Q1 : Clients sans commandes\n",
+    "Q1 = db.customers.aggregate([\n",
+    "    {\"$lookup\": {\n",
+    "        \"from\": \"orders\",\n",
+    "        \"localField\": \"customerNumber\",\n",
+    "        \"foreignField\": \"customerNumber\",\n",
+    "        \"as\": \"orders\"\n",
+    "    }},\n",
+    "    {\"$match\": {\"orders\": {\"$size\": 0}}},  # Les clients sans commande\n",
+    "    {\"$project\": {\"_id\": 0, \"customerName\": 1}}\n",
+    "])\n",
+    "\n",
+    "pandas.DataFrame(list(Q1))"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3 (ipykernel)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.11.5"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
